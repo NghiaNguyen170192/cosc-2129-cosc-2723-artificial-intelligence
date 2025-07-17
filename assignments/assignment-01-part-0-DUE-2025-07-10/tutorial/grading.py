@@ -4,7 +4,7 @@
 # educational purposes provided that (1) you do not distribute or publish
 # solutions, (2) you retain this notice, and (3) you provide clear
 # attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
-#
+# 
 # Attribution Information: The Pacman AI projects were developed at UC Berkeley.
 # The core projects and autograders were primarily created by John DeNero
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
@@ -70,17 +70,15 @@ class Grades:
             incompleted = self.prereqs[q].difference(completedQuestions)
             if len(incompleted) > 0:
                 prereq = incompleted.pop()
-                print(
+                print( \
                     """*** NOTE: Make sure to complete Question %s before working on Question %s,
                     *** because Question %s builds upon your answer for Question %s.
                     """ % (prereq, q, q, prereq))
                 continue
 
-            if self.mute:
-                util.mutePrint()
+            if self.mute: util.mutePrint()
             try:
-                util.TimeoutFunction(getattr(gradingModule, q), 1800)(
-                    self)  # Call the question's function
+                util.TimeoutFunction(getattr(gradingModule, q), 1800)(self)  # Call the question's function
                 # TimeoutFunction(getattr(gradingModule, q),1200)(self) # Call the question's function
             except Exception as inst:  # originally, Exception, inst
                 self.addExceptionMessage(q, inst, traceback)
@@ -88,14 +86,12 @@ class Grades:
             except:
                 self.fail('FAIL: Terminated with a string exception.')
             finally:
-                if self.mute:
-                    util.unmutePrint()
+                if self.mute: util.unmutePrint()
 
             if self.points[q] >= self.maxes[q]:
                 completedQuestions.add(q)
 
-            print('\n### Question %s: %d/%d ###\n' %
-                  (q, self.points[q], self.maxes[q]))
+            print('\n### Question %s: %d/%d ###\n' % (q, self.points[q], self.maxes[q]))
 
         print('\nFinished at %d:%02d:%02d' % time.localtime()[3:6])
         print("\nProvisional grades\n==================")
@@ -103,8 +99,7 @@ class Grades:
         for q in self.questions:
             print('Question %s: %d/%d' % (q, self.points[q], self.maxes[q]))
         print('------------------')
-        print('Total: %d/%d' %
-              (self.points.totalCount(), sum(self.maxes.values())))
+        print('Total: %d/%d' % (self.points.totalCount(), sum(self.maxes.values())))
         if bonusPic and self.points.totalCount() == 25:
             print("""
 
@@ -188,8 +183,7 @@ to follow your instructor's guidelines to receive credit on your project.
         total_score = sum(self.points.values())
         out_dct['score'] = total_score
         out_dct['max_score'] = total_possible
-        out_dct['output'] = "Total score (%d / %d)" % (
-            total_score, total_possible)
+        out_dct['output'] = "Total score (%d / %d)" % (total_score, total_possible)
 
         # individual tests
         tests_out = []
@@ -296,11 +290,9 @@ to follow your instructor's guidelines to receive credit on your project.
     def addMessage(self, message, raw=False):
         if not raw:
             # We assume raw messages, formatted for HTML, are printed separately
-            if self.mute:
-                util.unmutePrint()
+            if self.mute: util.unmutePrint()
             print('*** ' + message)
-            if self.mute:
-                util.mutePrint()
+            if self.mute: util.mutePrint()
             message = html.escape(message)
         self.messages[self.currentQuestion].append(message)
 
