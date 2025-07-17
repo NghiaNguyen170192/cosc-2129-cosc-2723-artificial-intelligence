@@ -18,7 +18,6 @@ Pacman agents (in searchAgents.py).
 """
 
 import util
-from util import Stack
 
 
 class SearchProblem:
@@ -76,41 +75,81 @@ def tinyMazeSearch(problem):
 
 
 def depthFirstSearch(problem):
-    frontier = Stack()
+    frontier = util.Stack()
     frontier.push((problem.getStartState(), []))
-    explored = set()
+    visited = set([problem.getStartState()])
     expanded_states = []
 
     while not frontier.isEmpty():
         state, path = frontier.pop()
-
-        if state in explored:
-            continue
-
-        explored.add(state)
         expanded_states.append(state)
 
         if problem.isGoalState(state):
             print("Expanded states:", expanded_states)
             return path
 
-        for successor, action in reversed(problem.getSuccessors(state)):
-            if successor not in explored:
-                frontier.push((successor, path + [action]))
+        for successor, action, _ in problem.getSuccessors(state):
+            if successor not in visited:
+                visited.add(successor)
+                new_path = path + [action]
+                frontier.push((successor, new_path))
 
     return []
 
 
 def breadthFirstSearch(problem):
-    """Search the shallowest nodes in the search tree first."""
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    frontier = util.Queue()
+    frontier.push((problem.getStartState(), []))
+    visited = set()
+    expanded_states = []
+
+    while not frontier.isEmpty():
+        state, path = frontier.pop()
+
+        if state in visited:
+            continue
+
+        visited.add(state)
+        expanded_states.append(state)
+
+        if problem.isGoalState(state):
+            print("Expanded states:", expanded_states)
+            return path
+
+        for successor, action, _ in problem.getSuccessors(state):
+            if successor not in visited:
+                new_path = path + [action]
+                frontier.push((successor, new_path))
+
+    return []
 
 
 def uniformCostSearch(problem):
-    """Search the node of least total cost first."""
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    frontier = util.PriorityQueue()
+    frontier.push((problem.getStartState(), [], 0), 0)  
+    visited = dict()  
+    expanded_states = []
+
+    while not frontier.isEmpty():
+        state, path, cost = frontier.pop()
+
+        if state in visited and visited[state] <= cost:
+            continue
+
+        visited[state] = cost
+        expanded_states.append(state)
+
+        if problem.isGoalState(state):
+            print("Expanded states:", expanded_states)
+            return path
+
+        for successor, action, step_cost in problem.getSuccessors(state):
+            new_cost = cost + step_cost
+            new_path = path + [action]
+            if successor not in visited or visited[successor] > new_cost:
+                frontier.push((successor, new_path, new_cost), new_cost)
+
+    return []
 
 
 def nullHeuristic(state, problem=None):
