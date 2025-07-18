@@ -126,8 +126,8 @@ def breadthFirstSearch(problem):
 
 def uniformCostSearch(problem):
     frontier = util.PriorityQueue()
-    frontier.push((problem.getStartState(), [], 0), 0)  
-    visited = dict()  
+    frontier.push((problem.getStartState(), [], 0), 0)
+    visited = dict()
     expanded_states = []
 
     while not frontier.isEmpty():
@@ -161,16 +161,36 @@ def nullHeuristic(state, problem=None):
 
 
 def aStarSearch(problem, heuristic=nullHeuristic):
-    """Search the node that has the lowest combined cost and heuristic first."""
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
 
+    start_state = problem.getStartState()
+    frontier = util.PriorityQueue()
+    frontier.push((start_state, [], 0), heuristic(start_state, problem))
+    explored = set()
+
+    while not frontier.isEmpty():
+        current_state, path, cost_so_far = frontier.pop()
+
+        if problem.isGoalState(current_state):
+            return path
+
+        if current_state not in explored:
+            explored.add(current_state)
+
+            for successor, action, step_cost in problem.getSuccessors(current_state):
+                new_cost = cost_so_far + step_cost
+                new_path = path + [action]
+                priority = new_cost + heuristic(successor, problem)
+                frontier.push((successor, new_path, new_cost), priority)
+
+    return []
 
 #####################################################
 # EXTENSIONS TO BASE PROJECT
 #####################################################
 
 # Extension Q1e
+
+
 def iterativeDeepeningSearch(problem):
     """Search the deepest node in an iterative manner."""
     "*** YOUR CODE HERE ***"
