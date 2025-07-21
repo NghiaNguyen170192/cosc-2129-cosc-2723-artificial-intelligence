@@ -413,7 +413,8 @@ def cornersHeuristic(state, problem):
     for distance in manhattan_distances:
         heuristic = max(heuristic, distance)
 
-    return heuristic  
+    return heuristic
+
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
@@ -514,9 +515,29 @@ def foodHeuristic(state, problem):
     Subsequent calls to this heuristic can access
     problem.heuristicInfo['wallCount']
     """
-    position, foodGrid = state
+    pacmanPosition, foodGrid = state
     "*** YOUR CODE HERE ***"
-    return 0
+
+    food_list = foodGrid.asList()
+    if not food_list:
+        return 0
+
+    if not food_list:
+        return 0
+
+    # Use actual maze distances and cache them
+    def get_cached_maze_distance(position1, position2):
+        key = (position1, position2)
+        if key not in problem.heuristicInfo:
+            problem.heuristicInfo[key] = mazeDistance(
+                position1, position2, problem.startingGameState)
+        return problem.heuristicInfo[key]
+
+    # Step 1: Find distance to farthest dot
+    max_distance = max(get_cached_maze_distance(
+        pacmanPosition, food) for food in food_list)
+
+    return max_distance
 
 
 class ClosestDotSearchAgent(SearchAgent):
@@ -551,7 +572,7 @@ class ClosestDotSearchAgent(SearchAgent):
         problem = AnyFoodSearchProblem(gameState)
 
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return search.bfs(problem)
 
 
 class AnyFoodSearchProblem(PositionSearchProblem):
@@ -588,7 +609,7 @@ class AnyFoodSearchProblem(PositionSearchProblem):
         x, y = state
 
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self.food[x][y]
 
 
 def mazeDistance(point1, point2, gameState):

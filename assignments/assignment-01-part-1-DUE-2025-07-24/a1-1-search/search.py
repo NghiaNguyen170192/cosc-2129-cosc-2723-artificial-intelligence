@@ -161,7 +161,6 @@ def nullHeuristic(state, problem=None):
 
 
 def aStarSearch(problem, heuristic=nullHeuristic):
-
     start_state = problem.getStartState()
     frontier = util.PriorityQueue()
     frontier.push((start_state, [], 0), heuristic(start_state, problem))
@@ -194,7 +193,35 @@ def aStarSearch(problem, heuristic=nullHeuristic):
 def iterativeDeepeningSearch(problem):
     """Search the deepest node in an iterative manner."""
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+
+    depth = 0
+    while True:
+        result = depthLimitedSearch(problem, depth)
+        if result != 'cutoff':
+            return result
+        depth += 1
+
+
+def depthLimitedSearch(problem, limit):
+    start_state = problem.getStartState()
+    visited = set()
+
+    # Queue stores (state, path, depth)
+    stack = util.Stack()
+    stack.push((start_state, [], 0))
+
+    while not stack.isEmpty():
+        state, path, current_depth = stack.pop()
+
+        if problem.isGoalState(state):
+            return path
+
+        if current_depth < limit and state not in visited:
+            visited.add(state)
+            for successor, action, _ in problem.getSuccessors(state):
+                stack.push((successor, path + [action], current_depth + 1))
+
+    return 'cutoff'
 
 
 #####################################################
