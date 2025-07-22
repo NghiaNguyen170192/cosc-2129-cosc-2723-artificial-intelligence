@@ -75,79 +75,95 @@ def tinyMazeSearch(problem):
 
 
 def depthFirstSearch(problem):
+    """
+    Search the deepest nodes in the search tree first.
+
+    Your search algorithm needs to return a list of actions that reaches the
+    goal. Make sure to implement a graph search algorithm.
+
+    To get started, you might want to try some of these simple commands to
+    understand the search problem that is being passed in:
+
+    print("Start:", problem.getStartState())
+    print("Is the start a goal?", problem.isGoalState(problem.getStartState()))
+    print("Start's successors:", problem.getSuccessors(problem.getStartState()))
+    """
+    "*** YOUR CODE HERE ***"
+    startState = problem.getStartState()
+    if problem.isGoalState(startState):
+        return []
+
     frontier = util.Stack()
-    frontier.push((problem.getStartState(), []))
-    visited = set([problem.getStartState()])
-    expanded_states = []
+    frontier.push((startState, []))
+    visited = set(startState)
 
     while not frontier.isEmpty():
         state, path = frontier.pop()
-        expanded_states.append(state)
 
         if problem.isGoalState(state):
-            print("Expanded states:", expanded_states)
             return path
 
-        for successor, action, _ in problem.getSuccessors(state):
+        # no use of stepCost in DFS
+        for successor, action, stepCost in problem.getSuccessors(state):
             if successor not in visited:
                 visited.add(successor)
-                new_path = path + [action]
-                frontier.push((successor, new_path))
+                newPath = path + [action]
+                frontier.push((successor, newPath))
 
     return []
 
 
 def breadthFirstSearch(problem):
+    """Search the shallowest nodes in the search tree first."""
+    "*** YOUR CODE HERE ***"
+    startState = problem.getStartState()
+    if problem.isGoalState(startState):
+        return []
+
     frontier = util.Queue()
-    frontier.push((problem.getStartState(), []))
-    visited = set()
-    expanded_states = []
+    frontier.push((startState, []))
+    reached = set()
+    reached.add(startState)
 
     while not frontier.isEmpty():
         state, path = frontier.pop()
 
-        if state in visited:
-            continue
-
-        visited.add(state)
-        expanded_states.append(state)
-
         if problem.isGoalState(state):
-            print("Expanded states:", expanded_states)
             return path
 
-        for successor, action, _ in problem.getSuccessors(state):
-            if successor not in visited:
-                new_path = path + [action]
-                frontier.push((successor, new_path))
-
-    return []
+        # no use of stepCost in BFS
+        for successor, action, stepCost in problem.getSuccessors(state):
+            if successor not in reached:
+                reached.add(successor)
+                frontier.push((successor, path + [action]))
 
 
 def uniformCostSearch(problem):
+    """Search the node of least total cost first."""
+    startState = problem.getStartState()
+    if problem.isGoalState(startState):
+        return []
+
     frontier = util.PriorityQueue()
-    frontier.push((problem.getStartState(), [], 0), 0)
-    visited = dict()
-    expanded_states = []
+    frontier.push((startState, [], 0), 0)
+    reached = {}
 
     while not frontier.isEmpty():
         state, path, cost = frontier.pop()
 
-        if state in visited and visited[state] <= cost:
+        if state in reached and reached[state] <= cost:
             continue
 
-        visited[state] = cost
-        expanded_states.append(state)
+        reached[state] = cost
 
         if problem.isGoalState(state):
-            print("Expanded states:", expanded_states)
             return path
 
-        for successor, action, step_cost in problem.getSuccessors(state):
-            new_cost = cost + step_cost
-            new_path = path + [action]
-            if successor not in visited or visited[successor] > new_cost:
-                frontier.push((successor, new_path, new_cost), new_cost)
+        for successor, action, stepCost in problem.getSuccessors(state):
+            totalCost = cost + stepCost
+            if successor not in reached or totalCost < reached[successor]:
+                frontier.push(
+                    (successor, path + [action], totalCost), totalCost)
 
     return []
 
@@ -161,34 +177,39 @@ def nullHeuristic(state, problem=None):
 
 
 def aStarSearch(problem, heuristic=nullHeuristic):
-    start_state = problem.getStartState()
+    """Search the node that has the lowest combined cost and heuristic first."""
+    "*** YOUR CODE HERE ***"
+    startState = problem.getStartState()
+    if problem.isGoalState(startState):
+        return []
+
     frontier = util.PriorityQueue()
-    frontier.push((start_state, [], 0), heuristic(start_state, problem))
-    explored = set()
+    frontier.push((startState, [], 0), heuristic(startState, problem))
+    reached = set()
 
     while not frontier.isEmpty():
-        current_state, path, cost_so_far = frontier.pop()
+        state, path, cost = frontier.pop()
 
-        if problem.isGoalState(current_state):
+        if problem.isGoalState(state):
             return path
 
-        if current_state not in explored:
-            explored.add(current_state)
+        if state not in reached:
+            reached.add(state)
 
-            for successor, action, step_cost in problem.getSuccessors(current_state):
-                new_cost = cost_so_far + step_cost
-                new_path = path + [action]
-                priority = new_cost + heuristic(successor, problem)
-                frontier.push((successor, new_path, new_cost), priority)
+            for successor, action, stepCost in problem.getSuccessors(state):
+                newCost = cost + stepCost
+                newPath = path + [action]
+                priority = newCost + heuristic(successor, problem)
+                frontier.push((successor, newPath, newCost), priority)
 
     return []
+
 
 #####################################################
 # EXTENSIONS TO BASE PROJECT
 #####################################################
 
 # Extension Q1e
-
 
 def iterativeDeepeningSearch(problem):
     """Search the deepest node in an iterative manner."""
@@ -203,23 +224,22 @@ def iterativeDeepeningSearch(problem):
 
 
 def depthLimitedSearch(problem, limit):
-    start_state = problem.getStartState()
+    startState = problem.getStartState()
     visited = set()
 
-    # Queue stores (state, path, depth)
     stack = util.Stack()
-    stack.push((start_state, [], 0))
+    stack.push((startState, [], 0))
 
     while not stack.isEmpty():
-        state, path, current_depth = stack.pop()
+        state, path, currentDepth = stack.pop()
 
         if problem.isGoalState(state):
             return path
 
-        if current_depth < limit and state not in visited:
+        if currentDepth < limit and state not in visited:
             visited.add(state)
             for successor, action, _ in problem.getSuccessors(state):
-                stack.push((successor, path + [action], current_depth + 1))
+                stack.push((successor, path + [action], currentDepth + 1))
 
     return 'cutoff'
 

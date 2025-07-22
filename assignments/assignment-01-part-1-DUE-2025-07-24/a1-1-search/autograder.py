@@ -260,9 +260,8 @@ def evaluate(generateSolutions, testRoot, moduleDict, exceptionMap=ERROR_HINT_MA
         question = questionClass(questionDict, display)
         
         # load test cases into question
-        tests = filter(lambda t: re.match(r'[^#~.].*\.test\Z', t), os.listdir(subdir_path))
-        tests = map(lambda t: re.match(r'(.*)\.test\Z', t).group(1), tests)
-
+        tests = filter(lambda t: re.match('[^#~.].*\.test\Z', t), os.listdir(subdir_path))
+        tests = map(lambda t: re.match('(.*)\.test\Z', t).group(1), tests)
         for t in sorted(tests):
             test_file = os.path.join(subdir_path, '%s.test' % t)
             solution_file = os.path.join(subdir_path, '%s.solution' % t)
