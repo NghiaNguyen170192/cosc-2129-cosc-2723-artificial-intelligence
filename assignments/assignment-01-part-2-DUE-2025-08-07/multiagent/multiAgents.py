@@ -17,7 +17,7 @@ from game import Directions
 import random
 import util
 import math
-
+from typing import Tuple, Any
 from game import Agent
 from pacman import GameState
 
@@ -102,19 +102,24 @@ class ReflexAgent(Agent):
         ghostScore = 0
 
         if scaredGhosts:
-            distanceToScaredGhost = min([manhattanDistance(newPos, ghost)
-                                         for ghost in scaredGhosts])
+            distanceToScaredGhost = min(
+                [manhattanDistance(newPos, ghost)
+                 for ghost in scaredGhosts]
+            )
             # chase scared ghosts!
             ghostScore += 10.0 / (distanceToScaredGhost + 1)
 
         if unscaredGhosts:
-            ghostScore = min([manhattanDistance(newPos, ghost)
-                              for ghost in unscaredGhosts])
+            ghostScore = min(
+                [manhattanDistance(newPos, ghost)
+                 for ghost in unscaredGhosts]
+            )
 
         capsuleScore = 0
         if capsules:
             distanceToCapsule = min(
-                [manhattanDistance(newPos, capsule) for capsule in capsules])
+                [manhattanDistance(newPos, capsule) for capsule in capsules]
+            )
             capsuleScore = 5.0 / (distanceToCapsule + 1)
 
         return successorGameState.getScore() + capsuleScore + foodScore * ghostScore
@@ -181,13 +186,12 @@ class MinimaxAgent(MultiAgentSearchAgent):
         Returns whether or not the game state is a losing state
         """
         "*** YOUR CODE HERE ***"
-        score, action = self.minimax(gameState, 0, 0)
+        # minimax returns a tuple: score and action
+        _, action = self.runMiniMax(gameState, 0, 0)
         return action
 
-    minimax_cache = {}
-
-    def minimax(self, gameState: GameState, agentIndex: int, depth: int):
-        if depth == self.depth or gameState.isWin() or gameState.isLose():
+    def runMiniMax(self, gameState: GameState, agentIndex: int, depth: int) -> Tuple[float, Any]:
+        if gameState.isWin() or gameState.isLose() or depth == self.depth:
             return self.evaluationFunction(gameState), None
 
         legalActions = gameState.getLegalActions(agentIndex)
@@ -198,10 +202,14 @@ class MinimaxAgent(MultiAgentSearchAgent):
 
         branches = []
         for nextGameState, action in zip(nextGameStates, legalActions):
-            score = self.minimax(nextGameState, nextAgentIndex, nextDepth)[0]
+            score, _ = self.runMiniMax(
+                nextGameState, nextAgentIndex, nextDepth)
             branches.append((score, action))
 
-        return max(branches) if agentIndex == 0 else min(branches)
+        if agentIndex == 0:
+            return max(branches)
+
+        return min(branches)
 
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
@@ -214,7 +222,65 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        _, action = self.runAlphaBetaPruning(
+            gameState, agentIndex=0, depth=0, alpha=-math.inf, beta=math.inf
+        )
+        return action
+
+    def runAlphaBetaPruning(self, gameState: GameState, agentIndex: int, depth: int, alpha: float, beta: float) -> Tuple[float, Any]:
+        if gameState.isWin() or gameState.isLose() or depth == self.depth:
+            return self.evaluationFunction(gameState), None
+
+        if agentIndex == 0:
+            return self.getMaxValue(gameState, agentIndex, depth, alpha, beta)
+
+        return self.getMinValue(gameState, agentIndex, depth, alpha, beta)
+
+    def getMaxValue(self, gameState: GameState, agentIndex: int, depth: int, alpha: float, beta: float) -> Tuple[float, Any]:
+        bestValue = -math.inf
+        bestAction = None
+        legalActions = gameState.getLegalActions(agentIndex)
+
+        for action in legalActions:
+            nextGameState = gameState.generateSuccessor(agentIndex, action)
+            nextAgentIndex = (agentIndex + 1) % gameState.getNumAgents()
+            nextDepth = depth + (nextAgentIndex == 0)
+
+            value, _ = self.runAlphaBetaPruning(
+                nextGameState, nextAgentIndex, nextDepth, alpha, beta)
+
+            if value > bestValue:
+                bestValue, bestAction = value, action
+
+            if bestValue > beta:
+                break
+
+            alpha = max(alpha, bestValue)
+
+        return bestValue, bestAction
+
+    def getMinValue(self, gameState: GameState, agentIndex: int, depth: int, alpha: float, beta: float) -> Tuple[float, Any]:
+        bestValue = math.inf
+        bestAction = None
+        legalActions = gameState.getLegalActions(agentIndex)
+
+        for action in legalActions:
+            nextGameState = gameState.generateSuccessor(agentIndex, action)
+            nextAgentIndex = (agentIndex + 1) % gameState.getNumAgents()
+            nextDepth = depth + (nextAgentIndex == 0)
+
+            value, _ = self.runAlphaBetaPruning(
+                nextGameState, nextAgentIndex, nextDepth, alpha, beta)
+
+            if value < bestValue:
+                bestValue, bestAction = value, action
+
+            if bestValue < alpha:
+                break
+
+            beta = min(beta, bestValue)
+
+        return bestValue, bestAction
 
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
@@ -230,7 +296,34 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         legal moves.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        _, action = self.runExpectiMax(gameState, agentIndex=0, depth=0)
+        return action
+
+    def runExpectiMax(self, gameState: GameState, agentIndex, depth) -> Tuple[float, Any]:
+        if gameState.isWin() or gameState.isLose() or depth == self.depth:
+            return self.evaluationFunction(gameState), None
+
+        legalActions = gameState.getLegalActions(agentIndex)
+        nextGameStates = [gameState.generateSuccessor(
+            agentIndex, action) for action in legalActions]
+        nextAgentIndex = (agentIndex + 1) % gameState.getNumAgents()
+        nextDepth = depth + (nextAgentIndex == 0)
+
+        branches = []
+        for nextGameState, action in zip(nextGameStates, legalActions):
+            score, _ = self.runExpectiMax(
+                nextGameState, nextAgentIndex, nextDepth)
+            branches.append((score, action))
+
+        if agentIndex == 0:
+            return max(branches)
+
+        numberOfBranches = len(branches)
+        totalSum = 0
+        for value, _ in branches:
+            totalSum += value
+
+        return (totalSum / numberOfBranches, None)
 
 
 def betterEvaluationFunction(currentGameState: GameState):
@@ -241,7 +334,12 @@ def betterEvaluationFunction(currentGameState: GameState):
     DESCRIPTION: <write something here so we know what you did>
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    return 0
+
+
+class LocalMiniMaxAgent(MultiAgentSearchAgent):
+    def getAction(self, gameState: GameState):
+        util.raiseNotDefined()
 
 
 # Abbreviation
