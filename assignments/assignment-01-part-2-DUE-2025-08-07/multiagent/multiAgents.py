@@ -337,9 +337,76 @@ def betterEvaluationFunction(currentGameState: GameState):
     return 0
 
 
-class LocalMiniMaxAgent(MultiAgentSearchAgent):
+class LocalMinimaxAgent(MultiAgentSearchAgent):
+    def __init__(self, evalFn='scoreEvaluationFunction', depth='2'):
+        super().__init__(evalFn, depth)
+
     def getAction(self, gameState: GameState):
-        util.raiseNotDefined()
+        legalActions = gameState.getLegalActions(0)
+        scores = []
+
+        for legalAction in legalActions:
+            successor = gameState.generateSuccessor(0, legalAction)
+            score, _ = self.runMiniMax(successor, 1, 0)
+            scores.append(score)
+
+        bestScore = max(scores)
+        bestActions = [action for action, score in zip(
+            legalActions, scores) if score == bestScore]
+        return random.choice(bestActions)
+
+    def runMiniMax(self, gameState: GameState, agentIndex: int, depth: int) -> Tuple[float, Any]:
+        if gameState.isWin() or gameState.isLose() or depth == self.depth:
+            return self.evaluationFunction(gameState), None
+
+        legalActions = gameState.getLegalActions(agentIndex)
+        nextGameStates = [gameState.generateSuccessor(
+            agentIndex, action) for action in legalActions]
+        nextAgentIndex = (agentIndex + 1) % gameState.getNumAgents()
+        nextDepth = depth + (nextAgentIndex == 0)
+
+        branches = []
+        for nextGameState, action in zip(nextGameStates, legalActions):
+            score, _ = self.runMiniMax(
+                nextGameState, nextAgentIndex, nextDepth)
+            branches.append((score, action))
+        if agentIndex == 0:
+            return max(branches)
+
+        return min(branches)
+
+    def evaluationFunction(self, gameState: GameState):
+        pacPos = gameState.getPacmanPosition()
+        food = gameState.getFood()
+        foodList = food.asList()
+        rewardWeigth = 2000
+        if not foodList:
+            return math.inf
+
+        minFoodDist = min(manhattanDistance(pacPos, food) for food in foodList)
+        foodScore = rewardWeigth / (minFoodDist + 1)
+
+        if pacPos in foodList:
+            foodScore += rewardWeigth
+
+        ghostStates = gameState.getGhostStates()
+        scaredTimers = [g.scaredTimer for g in ghostStates]
+        ghostScore = 0
+        for ghost, timer in zip(ghostStates, scaredTimers):
+            ghostDistance = manhattanDistance(pacPos, ghost.getPosition())
+            if ghostDistance <= 3:
+                if timer > 0:
+                    ghostScore += rewardWeigth / (ghostDistance + 1)
+                else:
+                    ghostScore -= 20.0 / (ghostDistance + 1)
+
+        capsules = gameState.getCapsules()
+        capsuleScore = 0
+
+        if pacPos in capsules:
+            capsuleScore += rewardWeigth
+
+        return gameState.getScore() + foodScore + ghostScore + capsuleScore
 
 
 # Abbreviation
