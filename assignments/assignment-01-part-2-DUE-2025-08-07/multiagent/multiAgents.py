@@ -20,6 +20,7 @@ import math
 from typing import Tuple, Any
 from game import Agent
 from pacman import GameState
+from game import Actions
 
 
 class ReflexAgent(Agent):
@@ -227,7 +228,8 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         )
         return action
 
-    def runAlphaBetaPruning(self, gameState: GameState, agentIndex: int, depth: int, alpha: float, beta: float) -> Tuple[float, Any]:
+    def runAlphaBetaPruning(self, gameState: GameState, agentIndex: int, depth: int, alpha: float, beta: float) -> \
+            Tuple[float, Any]:
         if gameState.isWin() or gameState.isLose() or depth == self.depth:
             return self.evaluationFunction(gameState), None
 
@@ -236,7 +238,8 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
 
         return self.getMinValue(gameState, agentIndex, depth, alpha, beta)
 
-    def getMaxValue(self, gameState: GameState, agentIndex: int, depth: int, alpha: float, beta: float) -> Tuple[float, Any]:
+    def getMaxValue(self, gameState: GameState, agentIndex: int, depth: int, alpha: float, beta: float) -> Tuple[
+        float, Any]:
         bestValue = -math.inf
         bestAction = None
         legalActions = gameState.getLegalActions(agentIndex)
@@ -259,7 +262,8 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
 
         return bestValue, bestAction
 
-    def getMinValue(self, gameState: GameState, agentIndex: int, depth: int, alpha: float, beta: float) -> Tuple[float, Any]:
+    def getMinValue(self, gameState: GameState, agentIndex: int, depth: int, alpha: float, beta: float) -> Tuple[
+        float, Any]:
         bestValue = math.inf
         bestAction = None
         legalActions = gameState.getLegalActions(agentIndex)
@@ -342,6 +346,11 @@ class LocalMinimaxAgent(MultiAgentSearchAgent):
         super().__init__(evalFn, depth)
 
     def getAction(self, gameState: GameState):
+        foodPath = self.aStarFoodSearch(gameState)
+
+        if foodPath:
+            return foodPath[0]
+
         legalActions = gameState.getLegalActions(0)
         scores = []
 
@@ -383,8 +392,8 @@ class LocalMinimaxAgent(MultiAgentSearchAgent):
         if not foodList:
             return math.inf
 
-        minFoodDist = min(manhattanDistance(pacPos, food) for food in foodList)
-        foodScore = rewardWeigth / (minFoodDist + 1)
+        minFoodDistance = min(manhattanDistance(pacPos, food) for food in foodList)
+        foodScore = rewardWeigth / (minFoodDistance + 1)
 
         if pacPos in foodList:
             foodScore += rewardWeigth
@@ -407,6 +416,62 @@ class LocalMinimaxAgent(MultiAgentSearchAgent):
             capsuleScore += rewardWeigth
 
         return gameState.getScore() + foodScore + ghostScore + capsuleScore
+
+    def aStarFoodSearch(self, gameState: GameState):
+        startPosition = gameState.getPacmanPosition()
+        foodGrid = gameState.getFood()
+        foodList = foodGrid.asList()
+        capsules = gameState.getCapsules()
+        walls = gameState.getWalls()
+        ghostStates = gameState.getGhostStates()
+
+        frontier = util.PriorityQueue()
+        frontier.push((startPosition, [], 0), 0)
+        visited = set()
+
+        def ghostPenalty(position):
+            penalty = 0
+            for ghost in ghostStates:
+                ghostPosition = ghost.getPosition()
+                dist = manhattanDistance(position, ghostPosition)
+                if dist <= 3:
+                    timer = ghost.scaredTimer
+                    if timer > 0:
+                        penalty -= 500 / (dist + 1)
+                    else:
+                        penalty += 1000 / (dist + 1)
+            return penalty
+
+        while not frontier.isEmpty():
+            currentPosition, path, costSoFar = frontier.pop()
+
+            if currentPosition in visited:
+                continue
+            visited.add(currentPosition)
+
+            if currentPosition in foodList or currentPosition in capsules:
+                return path
+
+            for direction in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
+                dx, dy = Actions.directionToVector(direction)
+                nextX, nextY = int(currentPosition[0] + dx), int(currentPosition[1] + dy)
+                nextPosition = (nextX, nextY)
+
+                if walls[nextX][nextY]:
+                    continue
+
+                stepCost = 1 + ghostPenalty(nextPosition)
+                newCost = costSoFar + stepCost
+
+                # Heuristic to nearest food or capsule
+                heuristicTargets = foodList + capsules
+                heuristic = min(
+                    manhattanDistance(nextPosition, target) for target in heuristicTargets) if heuristicTargets else 0
+                totalCost = newCost + heuristic
+
+                frontier.push((nextPosition, path + [direction], newCost), totalCost)
+
+        return []
 
 
 # Abbreviation
