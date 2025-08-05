@@ -20,7 +20,6 @@ import math
 from typing import Tuple, Any
 from game import Agent
 from pacman import GameState
-from game import Actions
 
 
 class ReflexAgent(Agent):
@@ -338,7 +337,30 @@ def betterEvaluationFunction(currentGameState: GameState):
     DESCRIPTION: <write something here so we know what you did>
     """
     "*** YOUR CODE HERE ***"
-    return 0
+    if currentGameState.isWin():
+        return math.inf
+
+    if currentGameState.isLose():
+        return -math.inf
+
+    pacmanPosition = currentGameState.getPacmanPosition()
+    ghostList = currentGameState.getGhostPositions()
+    foodList = currentGameState.getFood().asList()
+    capsuleList = currentGameState.getCapsules()
+    weight = 999
+
+    minFoodDistance = min(manhattanDistance(pacmanPosition, food) for food in foodList)
+    # (less food -> more point) plus (closer food -> more point)
+    foodScore = (999_999 / len(foodList) + 1) + (weight / minFoodDistance)
+
+    minGhostDistance = min(manhattanDistance(pacmanPosition, ghost) for ghost in ghostList)
+    # closer ghost -> less point
+    ghostScore = -(weight / minGhostDistance)
+
+    # closer capsules -> more point
+    capsuleScore = (weight / 1 + len(capsuleList))
+
+    return foodScore + ghostScore + capsuleScore
 
 
 class LocalMinimaxAgent(MultiAgentSearchAgent):
@@ -346,11 +368,6 @@ class LocalMinimaxAgent(MultiAgentSearchAgent):
         super().__init__(evalFn, depth)
 
     def getAction(self, gameState: GameState):
-        foodPath = self.aStarFoodSearch(gameState)
-
-        if foodPath:
-            return foodPath[0]
-
         legalActions = gameState.getLegalActions(0)
         scores = []
 
@@ -379,99 +396,45 @@ class LocalMinimaxAgent(MultiAgentSearchAgent):
             score, _ = self.runMiniMax(
                 nextGameState, nextAgentIndex, nextDepth)
             branches.append((score, action))
+
         if agentIndex == 0:
             return max(branches)
 
         return min(branches)
 
     def evaluationFunction(self, gameState: GameState):
-        pacPos = gameState.getPacmanPosition()
+        pacmanPosition = gameState.getPacmanPosition()
         food = gameState.getFood()
         foodList = food.asList()
-        rewardWeigth = 2000
+        weight = 999
         if not foodList:
             return math.inf
 
-        minFoodDistance = min(manhattanDistance(pacPos, food) for food in foodList)
-        foodScore = rewardWeigth / (minFoodDistance + 1)
+        minFoodDistance = min(manhattanDistance(pacmanPosition, food) for food in foodList)
+        # (less food -> more point) plus (closer food -> more point)
+        foodScore = (999_999 / len(foodList) + 1) + (weight / minFoodDistance)
 
-        if pacPos in foodList:
-            foodScore += rewardWeigth
+        if pacmanPosition in foodList:
+            foodScore += weight
 
         ghostStates = gameState.getGhostStates()
         scaredTimers = [g.scaredTimer for g in ghostStates]
         ghostScore = 0
         for ghost, timer in zip(ghostStates, scaredTimers):
-            ghostDistance = manhattanDistance(pacPos, ghost.getPosition())
+            ghostDistance = manhattanDistance(pacmanPosition, ghost.getPosition())
             if ghostDistance <= 3:
                 if timer > 0:
-                    ghostScore += rewardWeigth / (ghostDistance + 1)
+                    ghostScore += weight / ghostDistance
                 else:
-                    ghostScore -= 20.0 / (ghostDistance + 1)
+                    ghostScore -= weight / (ghostDistance + 1)
 
-        capsules = gameState.getCapsules()
-        capsuleScore = 0
+        capsuleList = gameState.getCapsules()
+        capsuleScore = (weight / 1 + len(capsuleList))
 
-        if pacPos in capsules:
-            capsuleScore += rewardWeigth
+        if pacmanPosition in capsuleList:
+            capsuleScore += weight
 
         return gameState.getScore() + foodScore + ghostScore + capsuleScore
-
-    def aStarFoodSearch(self, gameState: GameState):
-        startPosition = gameState.getPacmanPosition()
-        foodGrid = gameState.getFood()
-        foodList = foodGrid.asList()
-        capsules = gameState.getCapsules()
-        walls = gameState.getWalls()
-        ghostStates = gameState.getGhostStates()
-
-        frontier = util.PriorityQueue()
-        frontier.push((startPosition, [], 0), 0)
-        visited = set()
-
-        def ghostPenalty(position):
-            penalty = 0
-            for ghost in ghostStates:
-                ghostPosition = ghost.getPosition()
-                dist = manhattanDistance(position, ghostPosition)
-                if dist <= 3:
-                    timer = ghost.scaredTimer
-                    if timer > 0:
-                        penalty -= 500 / (dist + 1)
-                    else:
-                        penalty += 1000 / (dist + 1)
-            return penalty
-
-        while not frontier.isEmpty():
-            currentPosition, path, costSoFar = frontier.pop()
-
-            if currentPosition in visited:
-                continue
-            visited.add(currentPosition)
-
-            if currentPosition in foodList or currentPosition in capsules:
-                return path
-
-            for direction in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
-                dx, dy = Actions.directionToVector(direction)
-                nextX, nextY = int(currentPosition[0] + dx), int(currentPosition[1] + dy)
-                nextPosition = (nextX, nextY)
-
-                if walls[nextX][nextY]:
-                    continue
-
-                stepCost = 1 + ghostPenalty(nextPosition)
-                newCost = costSoFar + stepCost
-
-                # Heuristic to nearest food or capsule
-                heuristicTargets = foodList + capsules
-                heuristic = min(
-                    manhattanDistance(nextPosition, target) for target in heuristicTargets) if heuristicTargets else 0
-                totalCost = newCost + heuristic
-
-                frontier.push((nextPosition, path + [direction], newCost), totalCost)
-
-        return []
 
 
 # Abbreviation
