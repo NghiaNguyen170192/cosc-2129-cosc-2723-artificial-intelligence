@@ -20,10 +20,10 @@ from backend import ReplayMemory
 import backend
 import gridworld
 
-
-import random,util,math
+import random, util, math
 import numpy as np
 import copy
+
 
 class QLearningAgent(ReinforcementAgent):
     """
@@ -42,10 +42,12 @@ class QLearningAgent(ReinforcementAgent):
         - self.getLegalActions(state)
           which returns legal actions for a state
     """
+
     def __init__(self, **args):
         "You can initialize Q-values here..."
         ReinforcementAgent.__init__(self, **args)
         "*** YOUR CODE HERE ***"
+        self.values = util.Counter()
 
     def getQValue(self, state, action):
         """
@@ -54,7 +56,8 @@ class QLearningAgent(ReinforcementAgent):
           or the Q node value otherwise
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        print("self.values: " + str(self.values))
+        return self.values[(state, action)]
 
     def computeValueFromQValues(self, state):
         """
@@ -76,8 +79,6 @@ class QLearningAgent(ReinforcementAgent):
 
         return max_value
 
-
-
     def computeActionFromQValues(self, state):
         """
           Compute the best action to take in a state.  Note that if there
@@ -89,7 +90,7 @@ class QLearningAgent(ReinforcementAgent):
         if not legal_actions:
             return None
 
-        max_q_value = self.computeActionFromQValues(self, state)
+        max_q_value = self.computeValueFromQValues(state)
         best_actions = []
 
         for action in legal_actions:
@@ -116,7 +117,7 @@ class QLearningAgent(ReinforcementAgent):
         if is_true:
             return random.choice(legalActions)
 
-        return self.computeValueFromQValues(state)
+        return self.computeActionFromQValues(state)
 
     def update(self, state, action, nextState, reward: float):
         """
@@ -126,9 +127,27 @@ class QLearningAgent(ReinforcementAgent):
           NOTE: You should never call this function,
           it will be called on your behalf
         """
+
         "*** YOUR CODE HERE ***"
-        
-        util.raiseNotDefined()
+        # Q(s,a) ← Q(s,a) + alpha * [R(s,a,s′) + discount*maxQ(s′,a′) − Q(s,a)]
+        # where
+        # s(state)  = current state = state
+        # a(action)  = action taken = action
+        # s' = next state = nextState
+        # R(s, a, a') = reward received = reward
+        # alpha = learning rate = self.alpha
+        # discount = self.discount
+        # [R(s,a,s′) + discount*maxQ(s′,a′) − Q(s,a)] = temporal difference error = temporal_difference_error
+
+        old_q_value = self.getQValue(state, action)  # before update
+        max_q_value = self.computeValueFromQValues(nextState)
+
+        temporal_difference_error = reward + self.discount * max_q_value - old_q_value
+        new_q_value = old_q_value + self.alpha * temporal_difference_error
+
+        self.values[(state, action)] = new_q_value
+
+        # self.debug_update(state, action, reward, old_q_value, max_q_value, temporal_difference_error, {})
 
     def getPolicy(self, state):
         return self.computeActionFromQValues(state)
@@ -136,11 +155,22 @@ class QLearningAgent(ReinforcementAgent):
     def getValue(self, state):
         return self.computeValueFromQValues(state)
 
+    def debug_update(self, state, action, reward, old_q, max_q, td_error, features):
+        # Flatten features into a string: key=value pairs joined by ";"
+        features_str = ";".join([f"{k}={v:.4f}" for k, v in features.items()])
+
+        # Build one CSV-like row with "|" as delimiter
+        print(
+            f"state={state} | action={action} | reward={reward:.4f} | "
+            f"old_q={old_q:.4f} | max_q={max_q:.4f} | td_error={td_error:.4f} | "
+            f"alpha={self.alpha} | discount={self.discount} | features={features_str}"
+        )
+
 
 class PacmanQAgent(QLearningAgent):
     "Exactly the same as QLearningAgent, but with different default parameters"
 
-    def __init__(self, epsilon=0.05,gamma=0.8,alpha=0.2, numTraining=0, **args):
+    def __init__(self, epsilon=0.05, gamma=0.8, alpha=0.2, numTraining=0, **args):
         """
         These default parameters can be changed from the pacman.py command line.
         For example, to change the exploration rate, try:
@@ -163,9 +193,10 @@ class PacmanQAgent(QLearningAgent):
         informs parent of action for Pacman.  Do not change or remove this
         method.
         """
-        action = QLearningAgent.getAction(self,state)
-        self.doAction(state,action)
+        action = QLearningAgent.getAction(self, state)
+        self.doAction(state, action)
         return action
+
 
 class ApproximateQAgent(PacmanQAgent):
     """
@@ -174,6 +205,7 @@ class ApproximateQAgent(PacmanQAgent):
        and update.  All other QLearningAgent functions
        should work as is.
     """
+
     def __init__(self, extractor='IdentityExtractor', **args):
         self.featExtractor = util.lookup(extractor, globals())()
         PacmanQAgent.__init__(self, **args)
@@ -188,22 +220,45 @@ class ApproximateQAgent(PacmanQAgent):
           where * is the dotProduct operator
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        sum = 0
+        for feature, value in self.featExtractor.getFeatures(state, action).items():
+            sum += self.weights[feature] * value
+
+        return sum
 
     def update(self, state, action, nextState, reward: float):
         """
            Should update your weights based on transition
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+
+        old_q_value = self.getQValue(state, action)  # before update
+        max_q_value = self.computeValueFromQValues(nextState)
+        alpha = self.alpha
+        discount = self.discount
+
+        # temporal difference error
+        temporal_difference_error = reward + discount * max_q_value - old_q_value
+
+        features = self.featExtractor.getFeatures(state, action)
+        for feature, value in features.items():
+            self.weights[feature] += alpha * temporal_difference_error * value
+
+        # self.debug_update(state, action, reward, old_q_value, max_q_value, temporal_difference_error, features)
 
     def final(self, state):
         """Called at the end of each game."""
         # call the super-class final method
         PacmanQAgent.final(self, state)
+        print("Final weights:", dict(self.weights))
+        print("------------------------")
 
         # did we finish training?
         if self.episodesSoFar == self.numTraining:
             # you might want to print your weights here for debugging
             "*** YOUR CODE HERE ***"
             pass
+
+            # print("\nTraining complete. Learned weights:")
+            # for feature, weight in self.weights.items():
+            #     print(f"  {feature}: {weight:.4f}")

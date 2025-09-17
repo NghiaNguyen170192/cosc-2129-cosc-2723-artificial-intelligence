@@ -92,6 +92,9 @@ class ValueIterationAgent(ValueEstimationAgent):
                 max_q_value = q_value
                 best_action = possible_action
 
+        print(f"Best Action = {best_action}")
+        print(f"Best Q-Value = {max_q_value:.4f}")
+
         return best_action, max_q_value
 
     def getValue(self, state):
